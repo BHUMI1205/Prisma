@@ -13,13 +13,20 @@ export class UserService {
     private readonly jwtService: JwtService) { }
 
   async create(createUserDto: CreateUserDto) {
-    const { name, email, password } = createUserDto;
+    const { name, email, password, role } = createUserDto;
     let hash = await bcrypt.hash(password, 10)
     let data = await this.prisma.users.create({
       data: {
         name,
         email,
         password: hash
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true
       }
     })
     return {
@@ -36,15 +43,15 @@ export class UserService {
         email: email
       }
     })
-    if (data) {
+    if (data.length == 1) {
       let user = await bcrypt.compare(password, data[0].password)
       if (user) {
-        let payload = { id: data[0].id, email: data[0].email }
+        let payload = { id: data[0].id, email: data[0].email, role: data[0].role }
         var token = await this.jwtService.sign(payload, { secret: process.env.SECRET_KEY });
         return {
           status: HttpStatus.CREATED,
           message: 'This action login a user',
-          data: token
+          token: token
         }
       } else {
         return {
@@ -61,20 +68,50 @@ export class UserService {
 
   }
 
-  async findAll() {
-    let data = await this.prisma.users.findMany();
-    return {
-      status: HttpStatus.OK,
-      message: 'This action returns all user',
-      data: data
+  async findAll(req) {
+    let token = (req.headers.authorization).split(' ')[1]
+    let user;
+    user = this.jwtService.decode(token)
+    let role = user.role
+    if (role == 'ADMIN') {
+      let user = await this.prisma.users.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true
+        },
+        orderBy: {
+          name: 'desc'
+        },
+        where: {
+          email: {
+            // startsWith: 'user'
+            // endsWith:'gmail.com',
+            contains: 'gmail'
+          }
+        },
+        skip: 1,
+        take: 2
+      });
+      return {
+        status: HttpStatus.OK,
+        message: 'This action returns user',
+        data: user
+      }
+    } else {
+      return {
+        status: HttpStatus.OK,
+        message: 'This action returns user',
+        data: user
+      }
     }
   }
 
-  async findOne(id: number) {
-    let data = await this.prisma.users.findMany({
-      where: {
-        id: id
-      },
+  async findOne(id: string) {
+    let data = await this.prisma.users.findUnique({
+      where: { id: id },
     });
     return {
       status: HttpStatus.OK,
@@ -83,7 +120,7 @@ export class UserService {
     }
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
+  async update(id: string, updateUserDto: UpdateUserDto) {
     const { name, email } = updateUserDto
     let data = await this.prisma.users.update({
       where: {
@@ -101,7 +138,7 @@ export class UserService {
     }
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     await this.prisma.users.delete({
       where: {
         id: id

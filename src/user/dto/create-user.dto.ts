@@ -1,6 +1,4 @@
-import { from } from "rxjs"
-
-import { IsEmail, IsNotEmpty, IsNumber, IsString } from 'class-validator'
+import { IsEmail, IsNotEmpty, IsSemVer, IsString, IsStrongPassword } from 'class-validator'
 export class CreateUserDto {
 
    @IsString()
@@ -13,5 +11,7 @@ export class CreateUserDto {
 
    @IsString()
    password: string
+
+   @IsString()
+   role?: string
 }
- 
