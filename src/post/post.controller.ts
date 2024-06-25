@@ -5,7 +5,7 @@ import { UpdatePostDto } from './dto/update-post.dto';
 
 @Controller('post')
 export class PostController {
-  constructor(private readonly postService: PostService) {}
+  constructor(private readonly postService: PostService) { }
 
   @Post()
   create(@Body() createPostDto: CreatePostDto) {
@@ -13,13 +13,13 @@ export class PostController {
   }
 
   @Get()
-  findAll(@Req() req) {
-    return this.postService.findAll(req);
+  findAll(@Req() req, @Body() createPostDto: CreatePostDto) {
+    return this.postService.findAll(req, createPostDto);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.postService.findOne(id);
+  findOne(@Param('id') id: string, @Body() createPostDto: CreatePostDto) {
+    return this.postService.findOne(id, createPostDto);
   }
 
   @Patch(':id')

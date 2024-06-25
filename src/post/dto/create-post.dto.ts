@@ -1,7 +1,7 @@
-import { IsNotEmpty, IsString } from "class-validator"
+import { IsNotEmpty, IsOptional, IsString } from "class-validator"
 
 export class CreatePostDto {
-   
+
    @IsString()
    @IsNotEmpty()
    title: string
@@ -13,4 +13,12 @@ export class CreatePostDto {
    @IsString()
    @IsNotEmpty()
    categoryId: string
+
+   @IsString()
+   @IsOptional()
+   category: string
+
+   @IsString()
+   @IsOptional()
+   search: string
 }

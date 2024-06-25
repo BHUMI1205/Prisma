@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable, Post } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PrismaService } from 'prisma/prisma.service';
@@ -23,40 +23,24 @@ export class PostService {
     }
   }
 
-  async findAll(req) {
+  async findAll(req, createPostDto: CreatePostDto) {
     let token = (req.headers.authorization).split(' ')[1]
     let user = this.jwtService.decode(token)
-    let role = user.role
-    if (role == 'ADMIN') {
-      let post = await this.prisma.post.findMany({
-        select: {
-          id: true,
-          title: true,
-          createdAt: true,
-          updatedAt: true,
-          author: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
-          Category: {
-            select: {
-              id: true,
-              name: true
-            }
-          }
-        }
-      });
-      return {
-        status: HttpStatus.OK,
-        message: 'This action returns all post',
-        data: post
-      }
-    } else {
+    if (user) {
+      let category = createPostDto.category
+      let search = createPostDto.search
       let post = await this.prisma.post.findMany({
         where: {
-          id: user.id
+          OR: [
+            { Category: { name: category } },  //filter by category
+            {
+              OR: [  //serach by category/title/author name
+                { title: { contains: search } },
+                { author: { name: { contains: search } } },
+                { Category: { name: { contains: search } } }
+              ]
+            }
+          ]
         },
         select: {
           id: true,
@@ -72,22 +56,92 @@ export class PostService {
           Category: {
             select: {
               id: true,
-              name: true
-            }
+              name: true,
+            },
           }
         }
       });
       return {
         status: HttpStatus.OK,
         message: 'This action returns all post',
-        data: post
+        data: post,
+        count: post.length
+      }
+    } else {
+      return {
+        status: HttpStatus.UNAUTHORIZED,
+        message: 'Please Login First',
       }
     }
   }
 
-  async findOne(id: string) {
-    let data = await this.prisma.post.findUnique({
-      where: { id: id },
+  async findOne(userId: string, createPostDto) {
+    let category = createPostDto.category
+    let search = createPostDto.search
+
+    // const [data, count] = await this.prisma.$transaction([
+    //   this.prisma.post.findMany({
+    //     where: {
+    //       AND: [
+    //         {
+    //           UserId: userId
+    //         },
+    //         {
+    //           AND: [
+    //             { Category: { name: category } },  //filter by category
+    //             {
+    //               OR: [  //serach by category/title/author name
+    //                 { title: { contains: search } },
+    //                 { author: { name: { contains: search } } },
+    //                 { Category: { name: { contains: search } } }
+    //               ]
+    //             }
+    //           ]
+    //         }
+    //       ],
+    //     },
+    //     select: {
+    //       id: true,
+    //       title: true,
+    //       createdAt: true,
+    //       updatedAt: true,
+    //       author: {
+    //         select: {
+    //           id: true,
+    //           name: true
+    //         }
+    //       },
+    //       Category: {
+    //         select: {
+    //           id: true,
+    //           name: true
+    //         }
+    //       }
+    //     },
+    //   }),
+    //   this.prisma.post.count(),
+    // ]);
+
+    let data = await this.prisma.post.findMany({
+      where: {
+        AND: [
+          {
+            UserId: userId
+          },
+          {
+            AND: [
+              { Category: { name: category } },  //filter by category
+              {
+                OR: [  //serach by category/title/author name
+                  { title: { contains: search } },
+                  { author: { name: { contains: search } } },
+                  { Category: { name: { contains: search } } }
+                ]
+              }
+            ]
+          }
+        ],
+      },
       select: {
         id: true,
         title: true,
@@ -105,12 +159,14 @@ export class PostService {
             name: true
           }
         }
-      }
+      },
     });
+
     return {
       status: HttpStatus.OK,
-      message: `This action returns a #${id} post`,
-      data: data
+      message: `This action returns user #${userId}'s post`,
+      data: data,
+      count: data.length
     }
   }
 
